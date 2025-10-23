@@ -1,11 +1,11 @@
 import torch
 import numpy as np
 import random
-def smoothing_func(mask, sigma=0.5, device='cpu', noise_type='gaussian'):
+def smoothing_func(mask, sigma=0.5, device='cpu', noise_type='ablation_gaussian'):
     """Assuming masking part = 1 and non-masking part = 0,
        masking part gets noise added, non-masking part stays the same"""
     dtype = torch.float32
-    if noise_type == "gaussian":
+    if noise_type == "ablation_gaussian":
         noise = torch.tensor(np.random.normal(loc=0, scale=sigma, size=mask.shape), dtype=dtype).to(device)
     else:
         noise = torch.tensor(np.random.uniform(low=-sigma, high=sigma, size=mask.shape), dtype=dtype).to(device)

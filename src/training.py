@@ -13,39 +13,38 @@ import torchvision.transforms as transforms
 import torchvision
 criterion = nn.CrossEntropyLoss()
 
-def load_image_dataset(name, path, seed=42):
-    if name not in ["CIFAR10"]:
-        raise Exception("Not implemented")
-
-    transform_train = transforms.Compose([
-        transforms.RandomCrop(32, padding=4),
-        transforms.RandomHorizontalFlip(),
-        transforms.ToTensor(),
-    ])
-    train_data = torchvision.datasets.CIFAR10(
-        path, download=True, train=True, transform=transform_train)
-    test_data = torchvision.datasets.CIFAR10(
-        path, download=True, train=False, transform=transforms.ToTensor())
-
-    generator = torch.Generator().manual_seed(seed)
-    short_train_data  = torch.utils.data.random_split(train_data,
-                                                    [10000, len(train_data)- 10000],
-                                                    generator=generator)[0]
-    split = [1000, len(test_data)-1000]
-    short_test_data = torch.utils.data.random_split(test_data,
-                                                    split,
-                                                    generator=generator)[0]
-    return train_data, short_train_data, short_test_data, test_data
 
 
+def train(model,train_data,val_data,hparams,device='cuda'):
+    train_loader = torch.utils.data.DataLoader(
+        train_data,
+        batch_size=hparams['batch_size_training'],
+        shuffle=hparams.get('shuffle', True),
+        num_workers=hparams.get('num_workers', 1),
+        worker_init_fn=hparams.get('seed_worker', None),
+        pin_memory=True
+    )
+    val_loader = torch.utils.data.DataLoader(
+        val_data,
+        batch_size=hparams.get('batch_size_eval', hparams['batch_size_training']),
+        shuffle=False,
+        num_workers=hparams.get('num_workers', 1),
+        worker_init_fn=hparams.get('seed_worker', None),
+        pin_memory=True
+    )
+    optimizer = torch.optim.SGD(model.parameters(),
+                                lr=hparams["lr"],
+                                momentum=hparams["momentum"],
+                                weight_decay=hparams["weight_decay"])
+    scheduler = CosineAnnealingLR(optimizer, T_max=200)
 
-def train(net, epoch, optimizer, block_size, sigma, noise_type = "gaussian", device='cuda', trainloader=None, mode='ablation'):
-    net.train()
-    train_loss = 0
-    correct = 0
-    total = 0
     cifar_mean = [0.4914, 0.4822, 0.4465]
     cifar_std = [0.2023, 0.1994, 0.2010]
+    mode = hparams["smoothing_config"]["mode"]
+    noise = hparams["smoothing_config"].get('smoothing_distribution', None)
+    std = hparams["smoothing_config"].get('std', 0.0)
+    block_size = hparams["smoothing_config"].get('block_size', 5)
+
     if mode == 'ablation':
         util_func = random_mask_batch_one_sample_ablation_no_noise
     elif mode == 'ablation_noise':
@@ -54,30 +53,107 @@ def train(net, epoch, optimizer, block_size, sigma, noise_type = "gaussian", dev
         util_func = random_mask_batch_one_sample_no_noise_window
 
     normalized_cifar = NormalizeLayer(means=cifar_mean, stds=cifar_std)
-    for batch_idx, (inputs, targets) in enumerate(trainloader):
-        inputs, targets = inputs.to(device), targets.to(device)
-        #inputs = normalized_cifar(inputs, batched=True)
-        optimizer.zero_grad()
-        #outputs = net(inputs)
-        pictures = util_func(inputs, block_size, reuse_noise=False, device = device, sigma = sigma,noise_type=noise_type, normalizer = normalized_cifar)#.permute(0, 2, 3, 1)
-        #pictures = normalized_cifar(pictures, batched=True)
+
+    monitor = hparams.get('monitor', 'val_acc')  
+    mode = 'max' if monitor == 'val_acc' else 'min'
+    best_score = -float('inf') if mode == 'max' else float('inf')
+    patience = hparams.get('early_stopping', float('inf'))
+    epochs_since_improve = 0
+
+    for epoch in range(hparams['max_epochs']):
+        ######### Train #########
+        model.train()
+        running_loss, correct, total = 0.0, 0, 0
+        for inputs, targets in train_loader:
+            inputs, targets = inputs.to(device), targets.to(device)
+            
+            if util_func is not None:
+                inputs = util_func(
+                    inputs,
+                    block_size,
+                    reuse_noise=hparams.get('reuse_noise', False),
+                    device=device,
+                    sigma=std,
+                    noise_type=noise,
+                    normalizer=normalizer if hparams.get('normalize_cifar', False) else None
+                )
+            elif hparams.get('normalize_cifar', False):
+                inputs = normalizer(inputs)
+
+            optimizer.zero_grad()
+            logits = model(inputs)
+            loss = F.cross_entropy(logits, targets)
+            loss.backward()
+            optimizer.step()
+
+            running_loss += loss.item()
+            correct += (logits.argmax(1) == targets).sum().item()
+            total += targets.size(0)
+
+        loss_train = running_loss / max(1, len(train_loader))
+        acc_train = correct / max(1, total)
+
+        if hparams['lr_scheduler']:
+            if hparams['lr_scheduler'] == 'cosine':
+                scheduler.step()
+            else:
+                scheduler.step(loss_train)
+
+        #########Val##########
+        model.eval()
+        val_loss_sum, val_correct, val_total = 0.0, 0, 0
+        with torch.no_grad():
+            for inputs, targets in val_loader:
+                inputs, targets = inputs.to(device), targets.to(device)
+                if util_func is not None:
+                    inputs = util_func(
+                        inputs,
+                        block_size,
+                        reuse_noise=hparams.get('reuse_noise', False),
+                        device=device,
+                        sigma=std,
+                        noise_type=noise,
+                        normalizer=normalizer if hparams.get('normalize_cifar', False) else None
+                    )
+                elif hparams.get('normalize_cifar', False):
+                    inputs = normalizer(inputs)
+                logits = model(inputs)
+                loss = F.cross_entropy(logits, targets)
+                val_loss_sum += loss.item()
+                val_correct += (logits.argmax(1) == targets).sum().item()
+                val_total += targets.size(0)
+
+        val_loss = val_loss_sum / max(1, len(val_loader))
+        val_acc = val_correct / max(1, val_total)
+
+
+
+        current = val_acc if monitor == 'val_acc' else val_loss
+        improved = (current > best_score) if mode == 'max' else (current < best_score)
+
+        if improved:
+            best_score = current
+            epochs_since_improve = 0
+            best_state = {k: v.detach().cpu() for k, v in model.state_dict().items()}
+        else:
+            epochs_since_improve += 1
+
+        if hparams.get('logging', True):
+            print(f"Epoch {epoch:3d} | "
+                  f"train_loss {loss_train:.4f} acc {acc_train:.4f} | "
+                  f"val_loss {val_loss:.4f} acc {val_acc:.4f}")
+
+        if epochs_since_improve > patience:
+            if hparams.get('logging', True):
+                print(f"Early stopping at epoch {epoch}")
+            break
+
+    if best_state:
+        model.load_state_dict(best_state)
+    return model.eval()
+
+    
        
-        random_number = random.random()
-        if random_number >1: #following for printing images, set 1 to 0 to print Image
-            plt.imshow(pictures.cpu().permute(0, 2, 3, 1)[2][:,:,0:3])
-            plt.axis('off')  # Turn off axis labels
-            plt.show()
-
-        outputs = net(pictures) #add utils. before random_mask
-        _, predicted = outputs.max(1)
-        correct += predicted.eq(targets).sum().item()
-
-        loss = criterion(outputs, targets)
-        loss.backward()
-        optimizer.step()
-        total += targets.size(0)
-
-        train_loss += loss.item()
 
         
 def test_nominal(net,epoch, block_size, sigma, end_epoch = 50,mode = 'ablation', noise_type = "gaussian", testloader = None, device = 'cuda', checkpoint_dir = 'master_thesis/checkpoints', checkpoint_file = 'master_thesis/checkpoints/ckpt_epoch_{}.pth'):

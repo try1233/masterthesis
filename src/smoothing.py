@@ -107,6 +107,9 @@ def smooth_image(x, hparams, batch_size=1):
         if append_indicator:
             x = torch.cat((x, i), dim=1)
 
+
+
+        
     return x
 
 

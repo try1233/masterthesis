@@ -1,3 +1,5 @@
+import os
+os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
 import torch
 import numpy as np
 import seaborn as sns
@@ -5,7 +7,7 @@ import matplotlib.pyplot as plt
 from src.dataset import load_dataset
 from src.models import create_image_classifier
 from src.training import (
-    train_image_classifier,
+    train,
     smooth_image_classifier,
 )
 from src.cert import certify
@@ -14,7 +16,7 @@ from src.utils import set_random_seed
 hparams = {
     "device": "cuda",
     "datatype": "images",
-    "dataset_path": "../data/images/",
+    "dataset_path": "data/images/",
 
     "dataset": "CIFAR10",
     "dataset_mean": [0.4914, 0.4822, 0.4465],
@@ -23,16 +25,17 @@ hparams = {
     # model
     "arch": "ResNet50",
     "protected": True,
-    "in_channels": 4,
+    "in_channels": 3,
     "out_channels": 10,
+    "ablate": True,
 
     # training
-    "batch_size_training": 128,
+    "batch_size_training": 32,
     "batch_size_inference": 300,
     "lr": 0.01,
     "momentum": 0.9,
     "weight_decay": 5e-4,
-    "max_epochs": 400,
+    "max_epochs": 1,
     "early_stopping": 400,
     "lr_scheduler": "cosine",
     "logging": True,
@@ -42,9 +45,11 @@ hparams = {
     "n1": 10_000,
 
     "smoothing_config" : {
-        "smoothing_distribution": "hierarchical_gaussian",
+        "mode": "ablation_noise",
+        "smoothing_distribution": "ablation_gaussian",
         "append_indicator": True,
-        "m": 20,
+        "k": 20, #number of ablated pixels
+        "block_size": 5,
         "std": 0.25,
         "d": 1024
     }
@@ -52,9 +57,21 @@ hparams = {
 
 seed = 42
 set_random_seed(seed)
-train_data, test_data_small, test_data = load_dataset(hparams, seed=seed)
+train_data, val_data, test_data_small, test_data = load_dataset(hparams, seed=seed)
 model = create_image_classifier(hparams)
-model = train_image_classifier(model, train_data, hparams)
+model = train(model, train_data,val_data, hparams)
+
+
+model_path = hparams.get('model_path_override', None) or os.path.join(
+    hparams.get('checkpoint_dir', './checkpoints'),
+    hparams.get('run_name', 'ResNet50_20251023-213621.pt.pt') if str(hparams.get('run_name','')).endswith('.pt') 
+    else f"{hparams.get('run_name','/dfs/is/home/x276198/checkpoints/ResNet50_20251023-213621.pt')}.pt"
+)
+
+checkpoint = torch.load(model_path, map_location=hparams.get('device', 'cpu'))
+model.load_state_dict(checkpoint['model_state_dict'])
+model = model.to(hparams.get('device', 'cpu')).eval()
+
 pre_votes, targets = smooth_image_classifier(hparams, model, test_data_small, hparams["n0"])
 votes, _ = smooth_image_classifier(hparams, model, test_data_small, hparams["n1"])
 
@@ -92,4 +109,4 @@ plt.xticks(np.arange(0,max_eps+0.1, 0.2))
 ax.set_xlabel("Perturbation strength $\epsilon$ (L2-distance)")
 ax.set_ylabel("Certified Accuracy")
 ax.legend()
-plt.show()
+plt.savefig('plots/certified_radii.png')

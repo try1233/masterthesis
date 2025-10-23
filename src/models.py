@@ -74,7 +74,7 @@ class Bottleneck(nn.Module):
 
 class ResNet(nn.Module):
     #ablate if we ablate pixels, i.e. use 6 channels instead of 3
-    def __init__(self, block, num_blocks, num_classes=10, ablate= False):
+    def __init__(self, block, num_blocks, in_channels=3, out_channels=10,ablate= False):
         super(ResNet, self).__init__()
         self.in_planes = 64
         if ablate:
@@ -86,7 +86,7 @@ class ResNet(nn.Module):
         self.layer2 = self._make_layer(block, 128, num_blocks[1], stride=2)
         self.layer3 = self._make_layer(block, 256, num_blocks[2], stride=2)
         self.layer4 = self._make_layer(block, 512, num_blocks[3], stride=2)
-        self.linear = nn.Linear(512*block.expansion, num_classes)
+        self.linear = nn.Linear(512*block.expansion, out_channels)
 
     def _make_layer(self, block, planes, num_blocks, stride):
         strides = [stride] + [1]*(num_blocks-1)
@@ -124,17 +124,20 @@ def ResNet152():
     return ResNet(Bottleneck, [3,8,36,3])
 
 def create_image_classifier(hparams):
+    print(hparams['ablate'])
     arch = hparams['arch']
     if arch == "ResNet50":
         model = ResNet(Bottleneck,
                        num_blocks=[3, 4, 6, 3],
                        in_channels=hparams["in_channels"],
-                       out_channels=hparams["out_channels"])
+                       out_channels=hparams["out_channels"],
+                       ablate = hparams["ablate"])
     elif arch == "ResNet18":
         model = ResNet(Bottleneck,
                        num_blocks=[2, 2, 2, 2],
                        in_channels=hparams["in_channels"],
-                       out_channels=hparams["out_channels"])
+                       out_channels=hparams["out_channels"],
+                       ablate = hparams["ablate"])
     else:
         raise Exception("Not implemented")
 
