@@ -1,12 +1,10 @@
 import torch
 import numpy as np
 import torch.nn.functional as F
-from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
-from sparse_smoothing.utils import sparse_perturb
+from src.models import NormalizeLayer
 import torch.nn as nn
 
-from ..hierarchical_smoothing.images.models import *
 
 
 def smooth_image_classifier(hparams, model, data, n_samples,

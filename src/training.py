@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-from models import (
+from src.inference import (
     predict_and_certify_ablation_no_noise,
     random_mask_batch_one_sample_ablation_no_noise,
     random_mask_batch_one_sample_ablation_noise,

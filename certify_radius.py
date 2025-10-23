@@ -2,20 +2,15 @@ import torch
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
-from master_thesis.src.datasets import load_dataset
-from master_thesis.src.training import (
+from src.dataset import load_dataset
+from src.models import create_image_classifier
+from src.training import (
     train_image_classifier,
-    create_image_classifier,
     smooth_image_classifier,
 )
+from src.cert import certify
+from src.utils import set_random_seed
 
-
-"""from hierarchical_smoothing.datasets import *
-from hierarchical_smoothing.utils import *
-from hierarchical_smoothing.images.models import *
-from hierarchical_smoothing.images.training import *
-from master_thesis.src.smoothing import *"""
-from hierarchical_smoothing.cert import certify
 hparams = {
     "device": "cuda",
     "datatype": "images",

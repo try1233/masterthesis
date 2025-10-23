@@ -3,7 +3,7 @@ import math
 import scipy.stats as stats
 from scipy.stats import norm
 import torch
-
+import random
 def prob_func(k,delta,block_size, sigma,sign = 1):
     sum = 0
     delta_index = 0
@@ -270,3 +270,11 @@ def find_root(f, a, b, p, tol=1e-6, max_iter=1000):
             return None
 
     return (a + b) / 2
+
+
+def set_random_seed(seed: int):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.backends.cudnn.benchmark = False
+    torch.use_deterministic_algorithms(True)
