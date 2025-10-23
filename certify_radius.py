@@ -63,9 +63,9 @@ model = train(model, train_data,val_data, hparams)
 
 
 model_path = hparams.get('model_path_override', None) or os.path.join(
-    hparams.get('checkpoint_dir', './checkpoints'),
+    hparams.get('checkpoint_dir', '/checkpoints'),
     hparams.get('run_name', 'ResNet50_20251023-213621.pt.pt') if str(hparams.get('run_name','')).endswith('.pt') 
-    else f"{hparams.get('run_name','/dfs/is/home/x276198/checkpoints/ResNet50_20251023-213621.pt')}.pt"
+    else f"{hparams.get('run_name','checkpoints/ResNet50_20251023-213621.pt')}.pt"
 )
 
 checkpoint = torch.load(model_path, map_location=hparams.get('device', 'cpu'))
