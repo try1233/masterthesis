@@ -1,2 +1,3 @@
 checkpoints/*
 data/images/*
+.ipynb_checkpoints/*
