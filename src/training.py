@@ -41,9 +41,9 @@ def train(model,train_data,val_data,hparams,device='cuda'):
     cifar_mean = [0.4914, 0.4822, 0.4465]
     cifar_std = [0.2023, 0.1994, 0.2010]
     mode = hparams["smoothing_config"]["mode"]
-    noise = hparams["smoothing_config"].get('smoothing_distribution', None)
+    noise = hparams["smoothing_config"].get('noise_type', None)
     std = hparams["smoothing_config"].get('std', 0.0)
-    block_size = hparams["smoothing_config"].get('block_size', 5)
+    block_size = hparams["smoothing_config"].get('window_size', 5)
 
     if mode == 'ablation':
         util_func = random_mask_batch_one_sample_ablation_no_noise
@@ -156,9 +156,9 @@ def train(model,train_data,val_data,hparams,device='cuda'):
        
 
         
-def test_nominal(net,epoch, block_size, sigma, end_epoch = 50,mode = 'ablation', noise_type = "gaussian", testloader = None, device = 'cuda', checkpoint_dir = 'master_thesis/checkpoints', checkpoint_file = 'master_thesis/checkpoints/ckpt_epoch_{}.pth'):
+def test_nominal(model,epoch, block_size, sigma, end_epoch = 50,mode = 'ablation', noise_type = "gaussian", testloader = None, device = 'cuda', checkpoint_dir = 'master_thesis/checkpoints', checkpoint_file = 'master_thesis/checkpoints/ckpt_epoch_{}.pth'):
     print('\nEpoch: %d' % epoch)
-    net.eval()
+    model.eval()
     test_loss = 0
     correct = 0
     total = 0
@@ -175,7 +175,7 @@ def test_nominal(net,epoch, block_size, sigma, end_epoch = 50,mode = 'ablation',
         inputs, targets = inputs.to(device), targets.to(device)
         #inputs = normalized_cifar(inputs, batched=True)
         with torch.no_grad():
-            outputs = net(util_func(inputs, block_size, reuse_noise=False, device = device, sigma = sigma,noise_type=noise_type, normalizer=normalized_cifar))
+            outputs = model(util_func(inputs, block_size, reuse_noise=False, device = device, sigma = sigma,noise_type=noise_type, normalizer=normalized_cifar))
             loss = criterion(outputs, targets)
             _, predicted = outputs.max(1)
             correct += predicted.eq(targets).sum().item()
@@ -191,7 +191,7 @@ def test_nominal(net,epoch, block_size, sigma, end_epoch = 50,mode = 'ablation',
         print(acc)
         print('Saving..')
         state = {
-            'net': net.state_dict(),
+            'net': model.state_dict(),
             'acc': acc,
             'epoch': epoch
         }
@@ -203,7 +203,7 @@ def test_nominal(net,epoch, block_size, sigma, end_epoch = 50,mode = 'ablation',
         print(acc)
         return acc
     
-def test(net, block_size, testloader = None, device = 'cuda'):
+def test(model, block_size, testloader = None, device = 'cuda'):
     correct = 0
     cert_correct = 0
     cert_incorrect = 0
@@ -212,7 +212,7 @@ def test(net, block_size, testloader = None, device = 'cuda'):
         for batch_idx, (inputs, targets) in enumerate(testloader):
             inputs, targets = inputs.to(device), targets.to(device)
             total += targets.size(0)
-            predictions,  certyn = predict_and_certify_ablation_no_noise(inputs, net,block_size,size_to_certify = 5, num_classes = 10,threshold =  0.0)
+            predictions,  certyn = predict_and_certify_ablation_no_noise(inputs, model,block_size,size_to_certify = 5, num_classes = 10,threshold =  0.0)
 
             correct += (predictions.eq(targets)).sum().item()
             cert_correct += (predictions.eq(targets) & certyn).sum().item()

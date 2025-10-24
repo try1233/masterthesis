@@ -1,11 +1,11 @@
 import torch
 import numpy as np
 import random
-def smoothing_func(mask, sigma=0.5, device='cpu', noise_type='ablation_gaussian'):
+def smoothing_func(mask, sigma=0.5, device='cpu', noise_type='gaussian'):
     """Assuming masking part = 1 and non-masking part = 0,
        masking part gets noise added, non-masking part stays the same"""
     dtype = torch.float32
-    if noise_type == "ablation_gaussian":
+    if noise_type == "gaussian":
         noise = torch.tensor(np.random.normal(loc=0, scale=sigma, size=mask.shape), dtype=dtype).to(device)
     else:
         noise = torch.tensor(np.random.uniform(low=-sigma, high=sigma, size=mask.shape), dtype=dtype).to(device)
@@ -322,13 +322,13 @@ def predict_and_certify_ablation_no_noise(inpt, net, block_size, size_to_certify
 #standard ablation but with noise added onto window that is not ablated
 def random_mask_batch_one_sample_ablation_noise(batch, block_size, reuse_noise=False, sigma = 0.5, device = 'cuda:0', noise_type = "gaussian", normalizer = None):
       # color channel last
-    #256,3,32,32
+    #256,6,32,32
     batch = batch.permute(0, 2, 3, 1)
-    #256,32,32,3
+    #256,32,32,6
     out_c1 = torch.zeros(batch.shape).cuda()
     out_c2 = torch.zeros(batch.shape).cuda()
     batch = batch.permute(0, 3, 1, 2)
-    #256,3,32,32
+    #256,6,32,32
     if reuse_noise:
             
             xcorner = random.randint(0, batch.shape[1] - 1)
@@ -359,11 +359,11 @@ def random_mask_batch_one_sample_ablation_noise(batch, block_size, reuse_noise=F
         noise = smoothing_func(batch[:,:,:],sigma, device, noise_type = noise_type)
     
         batch[:,:,:] += noise
-        #256,3,32,32
+        #256,6,32,32
         if normalizer is not None: #first add noise, then normalize and then ablate
                 batch = normalizer(batch, batched=True)
         batch = batch.permute(0, 2, 3, 1)
-        #256,32,32,3
+        #256,32,32,6
         for i in range(batch.shape[0]):
             xcorner = random.randint(0, batch.shape[1] - 1)
             ycorner = random.randint(0, batch.shape[2] - 1)

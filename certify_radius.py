@@ -46,10 +46,11 @@ hparams = {
 
     "smoothing_config" : {
         "mode": "ablation_noise",
-        "smoothing_distribution": "ablation_gaussian",
+        "smoothing_distribution": "ablation_noise",
+        "noise_type":"gaussian",
         "append_indicator": True,
         "k": 20, #number of ablated pixels
-        "block_size": 5,
+        "window_size": 5,
         "std": 0.25,
         "d": 1024
     }
@@ -62,18 +63,14 @@ model = create_image_classifier(hparams)
 model = train(model, train_data,val_data, hparams)
 
 
-model_path = hparams.get('model_path_override', None) or os.path.join(
-    hparams.get('checkpoint_dir', '/checkpoints'),
-    hparams.get('run_name', 'ResNet50_20251023-213621.pt.pt') if str(hparams.get('run_name','')).endswith('.pt') 
-    else f"{hparams.get('run_name','checkpoints/ResNet50_20251023-213621.pt')}.pt"
-)
-
+model_path = "/dfs/is/home/x276198/projects/masterthesis/checkpoints/ResNet50_20251023-213621.pt" 
 checkpoint = torch.load(model_path, map_location=hparams.get('device', 'cpu'))
 model.load_state_dict(checkpoint['model_state_dict'])
 model = model.to(hparams.get('device', 'cpu')).eval()
 
 pre_votes, targets = smooth_image_classifier(hparams, model, test_data_small, hparams["n0"])
 votes, _ = smooth_image_classifier(hparams, model, test_data_small, hparams["n1"])
+
 
 y_hat = pre_votes.argmax(1)
 y = torch.tensor(targets)

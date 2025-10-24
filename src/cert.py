@@ -2,7 +2,7 @@ from scipy.stats import norm
 from scipy.special import comb
 import numpy as np
 from tqdm.auto import tqdm
-
+from sparse_smoothing.cert import *
 import math
 import torch
 
@@ -78,12 +78,12 @@ def compute_certificates(correct, abstain, p_emps, hparams, votes):
         cert = ablation_certificate_scholten(correct, p_emps, hparams)
     elif smoothing_distribution == "ablation_levine":
         cert = ablation_certificate_levine(correct, p_emps, hparams)
-    elif smoothing_distribution == "patch_smoothing":
+    elif (smoothing_distribution == "patch_smoothing") & (smoothing_config['noise_type']=="gaussian"):
         cert = patch_gaussian_certificate(p_emps, hparams)
     elif smoothing_distribution == "column_smoothing":
         cert = column_gaussian_certificate(p_emps, hparams)
-    elif smoothing_distribution == "patch_ablation":
-        cert = ablation_certificate_patch(votes, hparams)
+    elif (smoothing_distribution == "patch_smoothing") & (smoothing_config['noise_type']=="uniform"):
+        cert = patch_uniform_certificate(votes, hparams)
     elif smoothing_distribution == "column_ablation":
         cert = ablation_certificate_column(votes, hparams)
     else:
@@ -600,7 +600,7 @@ def column_gaussian_certificate(p_emps, hparams, steps=0.001, max=100):
 
 
 
-def ablation_certificate_patch(votes, hparams, max = 100):
+def patch_uniform_certificate(votes, hparams, max = 100):
     #votes is a tensor with number of votes for each class in shape num_samples x classes
     radii_multiclass = {}
     top_values, top_indices = torch.topk(votes, k=2, dim=1)
