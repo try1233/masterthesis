@@ -107,13 +107,13 @@ def smooth_image(x, hparams, batch_size=1):
 
         if append_indicator:
             x = torch.cat((x, i), dim=1)
-    elif smoothing_distribution == "ablation_noise":
+    elif smoothing_distribution == "patch_smoothing":
      
         x = x.unsqueeze(0)   
         sample = x.clone()
         x = random_mask_batch_one_sample_ablation_noise(
             sample,
-            hparams["smoothing_config"]['block_size'],
+            hparams["smoothing_config"]['window_size'],
             False,
             hparams["smoothing_config"]['std'],
             noise_type=  hparams["smoothing_config"]['noise_type'],

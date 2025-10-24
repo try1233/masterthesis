@@ -46,7 +46,7 @@ hparams = {
 
     "smoothing_config" : {
         "mode": "ablation_noise",
-        "smoothing_distribution": "ablation_noise",
+        "smoothing_distribution": "patch_smoothing",
         "noise_type":"gaussian",
         "append_indicator": True,
         "k": 20, #number of ablated pixels
