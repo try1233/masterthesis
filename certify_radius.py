@@ -12,12 +12,30 @@ from src.training import (
 )
 from src.cert import certify
 from src.utils import set_random_seed
+from experiment import run_experiment
+import json
+import argparse
+from pathlib import Path
+
+def load_votes(path, map_location='cpu'):
+    """
+    Load votes from a .pt file saved by save_votes.
+    Returns: pre_votes (Tensor), votes (Tensor), targets (ndarray), n0,n1
+    """
+    data = torch.load(path, map_location=map_location)
+    pre_votes = data['pre_votes']
+    votes = data['votes']
+    targets = data['targets']
+    n0 = int(data['n0'])
+    n1 = int(data['n1'])
+    return pre_votes, votes, targets, n0, n1
 
 hparams = {
     "device": "cuda",
     "datatype": "images",
     "dataset_path": "data/images/",
-
+    "checkpoints": "checkpoints/",
+    "run_name": "200_epoch",
     "dataset": "CIFAR10",
     "dataset_mean": [0.4914, 0.4822, 0.4465],
     "dataset_std": [0.2023, 0.1994, 0.2010],
@@ -30,13 +48,13 @@ hparams = {
     "ablate": True,
 
     # training
-    "batch_size_training": 32,
+    "batch_size_training": 64,
     "batch_size_inference": 300,
     "lr": 0.01,
     "momentum": 0.9,
     "weight_decay": 5e-4,
-    "max_epochs": 1,
-    "early_stopping": 400,
+    "max_epochs": 200,
+    "early_stopping": 100,
     "lr_scheduler": "cosine",
     "logging": True,
 
@@ -50,28 +68,15 @@ hparams = {
         "noise_type":"gaussian",
         "append_indicator": True,
         "k": 20, #number of ablated pixels
-        "window_size": 5,
+        "window_size": 20,
         "std": 0.25,
         "d": 1024
     }
 }
 
-seed = 42
-set_random_seed(seed)
-train_data, val_data, test_data_small, test_data = load_dataset(hparams, seed=seed)
-model = create_image_classifier(hparams)
-model = train(model, train_data,val_data, hparams)
-
-
-model_path = "/dfs/is/home/x276198/projects/masterthesis/checkpoints/ResNet50_20251023-213621.pt" 
-checkpoint = torch.load(model_path, map_location=hparams.get('device', 'cpu'))
-model.load_state_dict(checkpoint['model_state_dict'])
-model = model.to(hparams.get('device', 'cpu')).eval()
-
-pre_votes, targets = smooth_image_classifier(hparams, model, test_data_small, hparams["n0"])
-votes, _ = smooth_image_classifier(hparams, model, test_data_small, hparams["n1"])
-
-
+pre_votes,votes, targets =  run_experiment(hparams)
+#votes_path = "/dfs/is/home/x276198/projects/masterthesis/checkpoints/votes/run_votes.pt"
+#pre_votes, votes, targets, n0_loaded, n1_loaded = load_votes(votes_path, map_location='cpu')
 y_hat = pre_votes.argmax(1)
 y = torch.tensor(targets)
 correct = (y_hat == y).numpy()
@@ -82,7 +87,8 @@ density = 0.01
 max_eps = 1.3
 plot_data = {}
 
-for r in range(1,5):
+r=1
+while r in certificates["multiclass"]:
     xticks = np.arange(0,max_eps+density*10, density)
 
     cert_accs = []
@@ -92,6 +98,7 @@ for r in range(1,5):
         cert_acc = (certified * correct).mean()
         cert_accs.append(cert_acc)
     plot_data[r] = cert_accs
+    r+=1
 sns.set_style("whitegrid")
 sns.set_context("notebook")
 fig, ax = plt.subplots(1,1)

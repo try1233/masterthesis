@@ -500,8 +500,7 @@ def patch_gaussian_certificate(p_emps, hparams, steps=0.001, max=100):
 
     smoothing_config = hparams['smoothing_config']
     sigma = smoothing_config["std"]
-    k = smoothing_config["k"]
-    s = smoothing_config["s"]
+    s = smoothing_config["window_size"]
     size = smoothing_config["d"]
 
     radii_binary = {}
@@ -552,7 +551,7 @@ def column_gaussian_certificate(p_emps, hparams, steps=0.001, max=100):
     p_lower_binary, p_lower, p_upper = p_emps
     smoothing_config = hparams['smoothing_config']
     sigma = smoothing_config["std"]
-    k = smoothing_config["k"]
+ 
     s = smoothing_config["s"]
     width = smoothing_config["w"]
     radii_binary = {}
@@ -611,7 +610,7 @@ def patch_uniform_certificate(votes, hparams, max = 100):
     r = 0
     while True:
       r += 1
-      radii_multiclass[r] = top_values[:,0] > top_values[:, 1] + torch.tensor(top_indices[:,0] > top_indices[:,1] , dtype=torch.int).clone().detach() + 2 * (smoothing_config['s']+r-1)**2
+      radii_multiclass[r] = top_values[:,0] > top_values[:, 1] + torch.tensor(top_indices[:,0] > top_indices[:,1] , dtype=torch.int).clone().detach() + 2 * (smoothing_config['window_size']+r-1)**2
       
       if not (radii_multiclass[r] > 0).any() or r >= max:
             radii_multiclass[r] = radii_multiclass[r].tolist()
@@ -637,7 +636,7 @@ def ablation_certificate_column(votes, hparams, max = 100):
     r = 0
     while True:
       r += 1
-      radii_multiclass[r] = top_values[:,0] > top_values[:, 1] + torch.tensor(top_indices[:,0] > top_indices[:,1] , dtype=torch.int).clone().detach() + 2 * (smoothing_config['s']+r-1)
+      radii_multiclass[r] = top_values[:,0] > top_values[:, 1] + torch.tensor(top_indices[:,0] > top_indices[:,1] , dtype=torch.int).clone().detach() + 2 * (smoothing_config['window_size']+r-1)
       
       if not (radii_multiclass[r] > 0).any() or r >= max:
             radii_multiclass[r] = radii_multiclass[r].tolist()
