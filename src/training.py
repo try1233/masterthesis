@@ -175,33 +175,35 @@ def test_nominal(model,epoch, block_size, sigma, end_epoch = 50,mode = 'ablation
         inputs, targets = inputs.to(device), targets.to(device)
         #inputs = normalized_cifar(inputs, batched=True)
         with torch.no_grad():
-            outputs = model(util_func(inputs, block_size, reuse_noise=False, device = device, sigma = sigma,noise_type=noise_type, normalizer=normalized_cifar))
+            masked_input = util_func(inputs, block_size, reuse_noise=False, device = device, sigma = sigma,noise_type=noise_type, normalizer=normalized_cifar)
+            outputs = model(masked_input)
             loss = criterion(outputs, targets)
+
+            total += targets.size(0)
+            test_loss += loss.item() * targets.size(0)
+
             _, predicted = outputs.max(1)
             correct += predicted.eq(targets).sum().item()
+
             test_loss += loss.item()
             total += targets.size(0)
+
+    wrong = total - correct
+    acc = (100.0 * correct) / max(1, total)
+    test_loss = test_loss / max(1, total)
+    
+    cert_correct_pct = (100.0 * cert_correct) / max(1, total)
+    cert_incorrect_pct = (100.0 * cert_incorrect) / max(1, total)
+
+    
+    print(f"Using block size {block_size} with threshold {threshold}")
+    print(f"Total images: {total}")
+    print(f"Loss: {test_loss:.4f}")
+    print(f"Correct: {correct} ({acc:.3f}%)")
+    print(f"Wrongly classified: {wrong} ({100.0 - acc:.3f}%)")
+   
             
-    # Save checkpoint.
-    if (epoch % 10 == 0):
-        acc = 100.*correct/total
-        print(acc)
-    if (epoch == end_epoch):
-        acc = 100.*correct/total
-        print(acc)
-        print('Saving..')
-        state = {
-            'net': model.state_dict(),
-            'acc': acc,
-            'epoch': epoch
-        }
-        if not os.path.isdir(checkpoint_dir):
-            os.mkdir(checkpoint_dir)
-        torch.save(state, checkpoint_file.format(epoch))
-    if (epoch % 10 == 0):
-        acc = 100.*correct/total
-        print(acc)
-        return acc
+    
     
 def test(model, block_size, testloader = None, device = 'cuda'):
     correct = 0

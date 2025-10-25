@@ -7,8 +7,7 @@ import matplotlib.pyplot as plt
 from src.dataset import load_dataset
 from src.models import create_image_classifier
 from src.training import (
-    train,
-    smooth_image_classifier,
+    train
 )
 from src.cert import certify
 from src.utils import set_random_seed
@@ -41,12 +40,11 @@ hparams = {
     "dataset_std": [0.2023, 0.1994, 0.2010],
 
     # model
-    "arch": "ResNet50",
-    "protected": True,
+    "arch": "ResNet50",         
     "in_channels": 3,
     "out_channels": 10,
     "ablate": True,
-
+    "protected": True,
     # training
     "batch_size_training": 64,
     "batch_size_inference": 300,
@@ -75,7 +73,7 @@ hparams = {
 }
 
 pre_votes,votes, targets =  run_experiment(hparams)
-#votes_path = "/dfs/is/home/x276198/projects/masterthesis/checkpoints/votes/run_votes.pt"
+#votes_path = "checkpoints/votes/run_votes.pt"
 #pre_votes, votes, targets, n0_loaded, n1_loaded = load_votes(votes_path, map_location='cpu')
 y_hat = pre_votes.argmax(1)
 y = torch.tensor(targets)

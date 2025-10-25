@@ -397,6 +397,7 @@ def random_mask_batch_one_sample_ablation_noise(batch, block_size, reuse_noise=F
     return out
 
 def predict_and_certify_ablation_noise(inpt, net, block_size, size_to_certify, num_classes, threshold=0.0, sigma = 0.5, device='cuda:0', noise_type = "gaussian"):
+    """Function that deterministically """
     predictions = torch.zeros(inpt.size(0), num_classes).type(torch.int).to(device)
     batch = inpt.permute(0, 2, 3, 1)  # color channel last
     for xcorner in range(batch.shape[1]):
@@ -456,7 +457,7 @@ def predict_and_certify_ablation_noise(inpt, net, block_size, size_to_certify, n
             out_c2 += noise_tensor
             out = torch.cat((out_c1, out_c2), 1)
             softmx = torch.nn.functional.softmax(net(out), dim=1)
-            predictions += (softmx >= threshold).type(torch.int).cuda()
+            predictions += (softmx >= threshold).type(torch.int).to(device)
 
     predinctionsnp = predictions.cpu().numpy()
     idxsort = np.argsort(-predinctionsnp, axis=1, kind='stable')
@@ -465,8 +466,8 @@ def predict_and_certify_ablation_noise(inpt, net, block_size, size_to_certify, n
     idx = idxsort[:, 0]
     valsecond = valsort[:, 1]
     idxsecond = idxsort[:, 1]
-    num_affected_classifications = (size_to_certify + block_size - 1) * (size_to_certify + block_size - 1)
+    num_affected_classifications = (size_to_certify + block_size - 1) ** 2
     cert = torch.tensor(
         ((val - valsecond > 2 * num_affected_classifications) | (
-                    (val - valsecond == 2 * num_affected_classifications) & (idx < idxsecond)))).cuda()
-    return torch.tensor(idx).cuda(), cert
+                    (val - valsecond == 2 * num_affected_classifications) & (idx < idxsecond)))).to(device)
+    return torch.tensor(idx).to(device), cert

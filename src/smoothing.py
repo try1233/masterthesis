@@ -114,8 +114,8 @@ def smooth_image(x, hparams, batch_size=1):
         x = random_mask_batch_one_sample_ablation_noise(
             sample,
             hparams["smoothing_config"]['window_size'],
-            False,
-            hparams["smoothing_config"]['std'],
+            reuse_noise = False,
+            sigma = hparams["smoothing_config"]['std'],
             noise_type=  hparams["smoothing_config"]['noise_type'],
             normalizer = normalize
 

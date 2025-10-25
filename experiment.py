@@ -6,12 +6,10 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from src.dataset import load_dataset
 from src.models import create_image_classifier
-from src.training import (
-    train,
-    smooth_image_classifier,
-)
+from src.training import train
 from src.cert import certify
 from src.utils import set_random_seed
+from src.smoothing import smooth_image_classifier
 import json
 import argparse
 from pathlib import Path
@@ -57,3 +55,6 @@ def run_experiment(hparams):
     print(f"Saved votes to: {save_votes_path}")
 
     return pre_votes,votes, targets 
+
+
+
