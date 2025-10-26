@@ -2,3 +2,4 @@ checkpoints/*
 data/images/*
 .ipynb_checkpoints/*
 src/__pycache__/*
+certification.ipynb
