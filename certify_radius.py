@@ -29,6 +29,9 @@ def load_votes(path, map_location='cpu'):
     n1 = int(data['n1'])
     return pre_votes, votes, targets, n0, n1
 
+
+
+
 hparams = {
     "device": "cuda",
     "datatype": "images",
