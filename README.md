@@ -1,4 +1,4 @@
-# Provable Robustness for Norm-Bounded Patch Attacks
+# Provable Robustness for Norm-Bound Patch Attacks
 ### This repository contains the code used in my Master's thesis on certifying robustness of image classifiers against norm-bounded patch attacks. It implements randomized ablation/patch smoothing, certification, and plotting of certified accuracy across perturbation strengths.
 ## Quick start
 Clone the repo:
