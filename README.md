@@ -8,16 +8,6 @@ git clone https://github.com/try1233/masterthesis.git
 ```bash
 cd masterthesis
 ```
-
-Create a clean Python environment (recommended):
-
-```bash
-python -m venv .venv 
-```
-On macOS/Linux: ```bash source .venv/bin/activate 
-```
-On Windows (PowerShell): ```bash .venv\Scripts\Activate.ps1 
-```
 Install dependencies:
 ```bash 
 pip install -r requirements.txt

@@ -46,13 +46,13 @@ hparams = {
     "ablate": True,
     "protected": True,
     # training
-    "batch_size_training": 64,
+    "batch_size_training": 256,
     "batch_size_inference": 300,
     "lr": 0.01,
     "momentum": 0.9,
     "weight_decay": 5e-4,
     "max_epochs": 200,
-    "early_stopping": 100,
+    "early_stopping": 40,
     "lr_scheduler": "cosine",
     "logging": True,
 
